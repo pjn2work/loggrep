@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
-import os, sys
+import os
+import sys
 import fnmatch
 import re
 
 
-class loggrep:
+class LogGrep:
 
     _REGEX_PATTERN_FILE = "loggrep_patterns.txt"
     _compile_options_regexPattern = r"^(?P<all>.*)$"
@@ -23,35 +24,21 @@ class loggrep:
     _global_counter = dict()
     _group_filter = dict()
 
-    def show_usage(self):
-        print ("usage: \t python3 lg.py *.log *.txt\n")
-        print ("  --i \t\tCase insensitive (not default)")
-        print ("  --m \t\tMultiline regex (not default/future use)")
-        print ("")
-        print ("  --nc\t\tNo Counters (not default)")
-        print ("  -c  \t\tDefine Counters, ex: -c \"-myGroupName1 -otherGroupName2 -gn3\"")
-        print ("")
-        print ("  --nh\t\tNo Header on output (not default)")
-        print ("  --0 \t\tNo output (not default)")
-        print ("  --1 \t\tFull line output (default)")
-        print ("  -o  \t\tDefine output format, ex: -o \"%LINENUMBER% - %myGroupName1% \\n\\t %gn3%\"")
-        print ("")
-        print ("  -f  \t\t/full/path/to/foldername/ (default is .)")
-        print ("  filename or file filters, as many as you want")
-        print ("")
-        print ("  -rp \t\tRegex Pattern ( default is ^(?P<all>.*)$ )")
-        print ("  -r  \t\tRegex Pattern line_number from {} file".format(self._REGEX_PATTERN_FILE))
-        print ("")
-        print ("      \t\tFilter by group names defined in regex pattern, they are converted into parameters, as ex:")
-        print ("  -myGroupName1 ERROR")
-        print ("  -otherGroupName2 \".*My Text Tag.*\"")
+    def __init__(self, arg_dict):
+        if len(arg_dict) == 0:
+            show_usage()
+            exit(0)
+            # raise Exception("No parameters entered! required at least filename.")
 
+        self._compile_options(arg_dict)
+        self._compile_filters(arg_dict)
+        self._make_header()
 
-    def compile_options(self, arg_dict):
+    def _compile_options(self, arg_dict):
         if "-rp" in arg_dict:    # regex pattern string
             self._compile_options_regexPattern = arg_dict["-rp"]
         if "-r" in arg_dict:    # regex pattern string
-            self._compile_options_regexPattern = get_line_from_file(full_path_nextByMe(self._REGEX_PATTERN_FILE), int(arg_dict["-r"]))
+            self._compile_options_regexPattern = get_line_from_file(full_path_on_this_folder(self._REGEX_PATTERN_FILE), int(arg_dict["-r"]))
         if "--m" in arg_dict:   # multiline
             self._compile_options_regexOptions = self._compile_options_regexOptions | re.MULTILINE
         if "--i" in arg_dict:   # case insensitive
@@ -59,7 +46,7 @@ class loggrep:
         if "(?P<" not in self._compile_options_regexPattern:
             raise Exception("No regex Group defined in {}".format(self._compile_options_regexPattern))
 
-        ## output
+        # output
         if "--nh" in arg_dict:  # no headers
             self._compile_options_showHeaders = False
         if "--nc" in arg_dict:  # no counters
@@ -72,7 +59,7 @@ class loggrep:
             self._compile_options_viewMode = 2
             self._compile_options_viewModeFormat = arg_dict["-o"]
 
-        ## counters
+        # counters
         if self._compile_options_showCounters and "-c" in arg_dict:  # counters selected
             for cname in arg_dict["-c"].split(" "):
                 if len(cname) > 0:
@@ -85,7 +72,7 @@ class loggrep:
                     else:
                         self._compile_options_countersSelected[sname] = 0
 
-        ## file filters
+        # file filters
         if "-f" in arg_dict:
             self._compile_options_foldername = arg_dict["-f"]
         for key in arg_dict:
@@ -94,8 +81,7 @@ class loggrep:
         if sys.stdin.isatty() and not self._compile_options_filenameFilter:
             raise Exception("No filename passed!")
 
-
-    def compile_filters(self, arg_dict):
+    def _compile_filters(self, arg_dict):
         rp = self._compile_options_regexPattern
         self._compile_options_regexPattern = ""
 
@@ -120,12 +106,12 @@ class loggrep:
 
             # Find Group Filter Value
             p2 = next_close(rp, ')')
-            if (p2 < 0):
+            if not p2:
                 raise Exception("Group value {} cannot be null. {}".format(group_name, rp))
 
             # ++GROUP_FILTER++
-            if "-" + group_name in arg_dict:
-                group_filter = arg_dict["-" + group_name];
+            if "-{}".format(group_name) in arg_dict:
+                group_filter = arg_dict["-{}".format(group_name)]
             else:
                 group_filter = rp[0:p2]
 
@@ -147,30 +133,17 @@ class loggrep:
         # Build Formated ++regex_pattern++
         self._compile_options_regexPattern += rp
 
-
-    def make_header(self):
+    def _make_header(self):
         if self._compile_options_showHeaders:
-            print ("Using regex pattern {}".format(self._compile_options_regexPattern))
-            print (self._compile_options_regexOptions)
+            print("Regex options: {}".format(self._compile_options_regexOptions))
+            print("Regex pattern: {}".format(self._compile_options_regexPattern))
             for group_name, group_re_filter in self._group_filter.items():
-                print ("  -{} {}".format(group_name, quote_if_spaces(group_re_filter)))
+                print("  -{} {}".format(group_name, quote_if_spaces(group_re_filter)))
         self._header = re.compile(self._compile_options_regexPattern, self._compile_options_regexOptions)
 
-
-    def __init__(self, arg_dict):
-        if len(arg_dict) == 0:
-            self.show_usage()
-            exit(0)
-            #raise Exception("No parameters entered! required at least filename.")
-
-        self.compile_options(arg_dict)
-        self.compile_filters(arg_dict)
-        self.make_header()
-
-
-    def show_results(self, my_match, line_number, line):
+    def _show_results(self, my_match, line_number, line):
         if self._compile_options_viewMode == 1:
-            print (line[:-1])
+            print(line[:-1])
         elif self._compile_options_viewMode == 2:
             output_result = ""
             output_format = self._compile_options_viewModeFormat
@@ -202,10 +175,9 @@ class loggrep:
                     output_result += output_format[0:1]
                     output_format = output_format[1:]
 
-            print (output_result)
+            print(output_result)
 
-
-    def inc_counters(self, my_match, local_counter, global_counter):
+    def _inc_counters(self, my_match, local_counter, global_counter):
         if not self._compile_options_showCounters:
             return
 
@@ -233,19 +205,22 @@ class loggrep:
                 else:
                     global_counter[value] = 1
 
+    def _show_counters(self, local_counter):
+        if self._compile_options_showCounters:
+            print(" Counters ".center(80, "."))
+            for key, value in sorted(local_counter.items(), key=lambda kv:kv[1], reverse=True):
+                if value > 1:
+                    print("{0:<80} {1:4}".format(key, value))
 
     def show_totals(self):
         if self._compile_options_showCounters:
-            print (" Totals ".center(80, "="))
+            print(" Totals ".center(80, "="))
             for key, value in sorted(self._global_counter.items()):
-                print ("{0:<79} #{1}".format(key, value))
-
+                print("{0:<80} {1:4}".format(key, value))
 
     def analyse_file(self, foldername, filename):
         if self._compile_options_showHeaders:
-            print (" File ".center(80, "-"))
-            print (filename)
-            print ("-"*80)
+            print(" {} ".format(filename).center(80, "-"))
 
         local_counter = dict()
         with open(os.path.join(foldername, filename), 'r') as txt:
@@ -255,22 +230,17 @@ class loggrep:
                 line = txt.read()
                 for my_match in self._header.finditer(line):
                     p1, p2 = my_match.regs[0]
-                    self.inc_counters(my_match, local_counter, self._global_counter)
-                    self.show_results(my_match, my_match.start(), line[p1:p2+1])
+                    self._inc_counters(my_match, local_counter, self._global_counter)
+                    self._show_results(my_match, my_match.start(), line[p1:p2 + 1])
             else:
                 for line in txt:
                     line_number += 1
                     my_match = self._header.match(line)
                     if my_match:
-                        self.inc_counters(my_match, local_counter, self._global_counter)
-                        self.show_results(my_match, line_number, line)
+                        self._inc_counters(my_match, local_counter, self._global_counter)
+                        self._show_results(my_match, line_number, line)
 
-        if self._compile_options_showCounters:
-            print (" Counters ".center(80, "."))
-            for key, value in sorted(local_counter.items(), key = lambda kv:kv[1], reverse = True):
-                if value > 1:
-                    print ("{0:<79} #{1}".format(key, value))
-
+        self._show_counters(local_counter)
 
     def analyse_files(self):
         filenames = set()
@@ -285,7 +255,6 @@ class loggrep:
 
         self.show_totals()
 
-
     def analyse_console(self):
         local_counter = dict()
         line_number = 0
@@ -293,17 +262,20 @@ class loggrep:
             line_number += 1
             my_match = self._header.match(line)
             if my_match:
-                self.inc_counters(my_match, local_counter, self._global_counter)
-                self.show_results(my_match, line_number, line)
+                self._inc_counters(my_match, local_counter, self._global_counter)
+                self._show_results(my_match, line_number, line)
 
+        self._show_counters(local_counter)
         self.show_totals()
 
 
-def full_path_nextByMe(filename):
+# returns fullpath of file located in this same folder
+def full_path_on_this_folder(filename):
     foldername = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(foldername, filename)
 
 
+# returns text in line_number (first line is 1, not 0)
 def get_line_from_file(filename, line_number):
     current_line = 0
     with open(filename, "r") as fp:
@@ -317,6 +289,7 @@ def get_line_from_file(filename, line_number):
     raise Exception("Line number {} does not exits in file {}. Reached only line {}".format(line_number, filename, current_line))
 
 
+# convert list of parameters to dict
 def args2dict(argv_list):
     total = len(argv_list)
     result = dict()
@@ -336,42 +309,67 @@ def args2dict(argv_list):
     return result
 
 
-def next_close(text, close_char):
+# returns the position of the correspondent close parenthesis
+def next_close(text, close_char=")"):
     all_open = "{[(<"
     all_close = "}])>"
 
-    if close_char not in all_close:
-        return -1
+    if close_char in all_close:
+        open_char = all_open[all_close.index(close_char)]
+        last_char = ""
+        found = 0
 
-    open_char = all_open[all_close.index(close_char)]
-    last_char = " "
-    found = 0
-    pos = 0
+        for pos, char in enumerate(text):
+            if last_char != "\\":
+                if char == open_char:
+                    found += 1
+                elif char == close_char:
+                    if found <= 1:
+                        return pos
+                    else:
+                        found -= 1
+            last_char = char
 
-    for char in text:
-        if last_char != "\\":
-            if char == open_char:
-                found += 1
-            elif char == close_char:
-                if found <= 1:
-                    return pos
-                else:
-                    found -= 1
-        pos += 1
-        last_char = char
-
-    return -1
+    return None
 
 
+# return between "" if string has spaces
 def quote_if_spaces(txt):
     if len(txt) > 0 and " " in txt:
         return "\"" + txt + "\""
     return txt
 
 
-if __name__ == "__main__":
-    lg = loggrep(args2dict(sys.argv))
+def show_usage():
+    info = """
+    usage: \t python3 lg.py *.log *.txt\n
+      --i \t\tCase insensitive (not default)
+      --m \t\tMultiline regex (not default/future use)
     
+      --nc\t\tNo Counters (not default)
+      -c  \t\tDefine Counters, ex: -c "-myGroupName1 -otherGroupName2 -gn3"
+    
+      --nh\t\tNo Header on output (not default)
+      --0 \t\tNo output (not default)
+      --1 \t\tFull line output (default)
+      -o  \t\tDefine output format, ex: -o "%LINENUMBER% - %myGroupName1% \\n\\t %gn3%"
+    
+      -f  \t\t/full/path/to/foldername/ (default is .)
+      filename or file filters, as many as you want
+    
+      -rp \t\tRegex Pattern ( default is ^(?P<all>.*)$ )
+      -r  \t\tRegex Pattern line_number from "loggrep_patterns.txt" file
+    
+          \t\tFilter by group names defined in regex pattern, they are converted into parameters, as ex:
+      -level ERROR
+      -otherGroupName2 ".*My Text Tag.*"
+    """
+    print(info)
+
+
+if __name__ == "__main__":
+    lg = LogGrep(args2dict(sys.argv))
+
     if sys.stdin.isatty():
         lg.analyse_files()
     else:
