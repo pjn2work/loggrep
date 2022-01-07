@@ -35,6 +35,9 @@ class LogGrep:
         self._make_header()
 
     def _compile_options(self, arg_dict):
+        if "--sr" in arg_dict:
+            show_regex_file(full_path_on_this_folder(self._REGEX_PATTERN_FILE))
+            exit(0)
         if "-rp" in arg_dict:    # regex pattern string
             self._compile_options_regexPattern = arg_dict["-rp"]
         if "-r" in arg_dict:    # regex pattern string
@@ -218,12 +221,12 @@ class LogGrep:
             for key, value in sorted(self._global_counter.items()):
                 print("{0:<80} {1:4}".format(key, value))
 
-    def analyse_file(self, foldername, filename):
+    def analyse_file(self, filename):
         if self._compile_options_showHeaders:
             print(" {} ".format(filename).center(80, "-"))
 
         local_counter = dict()
-        with open(os.path.join(foldername, filename), 'r') as txt:
+        with open(filename, 'r') as txt:
             line_number = 0
 
             if self._compile_options_regexOptions & re.MULTILINE == re.MULTILINE:
@@ -250,11 +253,12 @@ class LogGrep:
             if os.path.isfile(filter):
                 filenames.add(filter)
             else:
-                filenames.update(fnmatch.filter(os.listdir(self._compile_options_foldername), filter))
+                for filename in fnmatch.filter(os.listdir(self._compile_options_foldername), filter):
+                    filenames.add(os.path.join(self._compile_options_foldername, filename))
 
         # analyse each file
         for filename in filenames:
-            self.analyse_file(self._compile_options_foldername, filename)
+            self.analyse_file(filename)
 
         self.show_totals()
 
@@ -290,6 +294,18 @@ def get_line_from_file(filename, line_number):
             line = fp.readline()
 
     raise Exception("Line number {} does not exits in file {}. Reached only line {}".format(line_number, filename, current_line))
+
+
+# show contents of regex pattern file
+def show_regex_file(filename):
+    print(" Patterns on {} ".format(os.path.basename(filename)).center(80, "-"))
+    current_line = 0
+    with open(filename, "r") as fp:
+        line = fp.readline()
+        while line:
+            current_line += 1
+            print("{} {}".format(current_line, line[:-1]))
+            line = fp.readline()
 
 
 # convert list of parameters to dict
@@ -360,6 +376,7 @@ def show_usage():
       -f  \t\t/full/path/to/foldername/ (default is .)
       filename or file filters, as many as you want
     
+      --sr\t\tShow regex patterns stored in file
       -rp \t\tRegex Pattern ( default is ^(?P<all>.*)$ )
       -r  \t\tRegex Pattern line_number from "loggrep_patterns.txt" file
     
