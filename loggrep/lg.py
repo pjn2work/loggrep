@@ -247,7 +247,10 @@ class LogGrep:
 
         # get file names
         for filter in self._compile_options_filenameFilter:
-            filenames.update(fnmatch.filter(os.listdir(self._compile_options_foldername), filter))
+            if os.path.isfile(filter):
+                filenames.add(filter)
+            else:
+                filenames.update(fnmatch.filter(os.listdir(self._compile_options_foldername), filter))
 
         # analyse each file
         for filename in filenames:
