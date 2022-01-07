@@ -4,7 +4,7 @@ Python script to extend grep command, adding counters, easier to filter by regex
 
 
 ## Usage
-python3 lg.py *.log *.txt
+python lg.py *.log *.txt -r 1
 
 ```
   --help	shows this help screen
@@ -31,4 +31,17 @@ python3 lg.py *.log *.txt
       		Filter by group names defined in regex pattern, they are converted into parameters, as ex:
   -myGroupName1 ERROR
   -otherGroupName2 ".*My Text Tag.*"
+
+
+  examples:
+    $ python lg.py --sr
+    This will show all regex pattern stored on regex file
+    
+    $ python lg.py -r 1 *.log *.txt /my/folder/file.log -level WARN -c "class" --0
+    This will show only counters for class from all log and txt files 
+    and also from /my/folder/file.log, where the level is equal to WARN,
+    based on regex pattern stored in line 1
+    
+    $ tail -100 file.log | python lg.py -rp "^(?P<level>[A-Z]{4,5}) (?P<class>.+?) - (?P<msg>.+)$" -o "failed - %class%" --nh --nc
+    This will format the output to be like "failed - com.org.my.class" and ommit counters and header
 ```
