@@ -27,17 +27,16 @@ class LogGrep:
     def __init__(self, arg_dict):
         if len(arg_dict) == 0:
             show_usage()
-            exit(0)
-            # raise Exception("No parameters entered! required at least filename.")
 
         self._compile_options(arg_dict)
         self._compile_filters(arg_dict)
         self._make_header()
 
     def _compile_options(self, arg_dict):
+        if "--help" in arg_dict or "--h" in arg_dict:
+            show_usage()
         if "--sr" in arg_dict:
             show_regex_file(full_path_on_this_folder(self._REGEX_PATTERN_FILE))
-            exit(0)
         if "-rp" in arg_dict:    # regex pattern string
             self._compile_options_regexPattern = arg_dict["-rp"]
         if "-r" in arg_dict:    # regex pattern string
@@ -306,6 +305,7 @@ def show_regex_file(filename):
             current_line += 1
             print("{} {}".format(current_line, line[:-1]))
             line = fp.readline()
+    exit(0)
 
 
 # convert list of parameters to dict
@@ -362,6 +362,9 @@ def quote_if_spaces(txt):
 def show_usage():
     info = """
     usage: \t python3 lg.py *.log *.txt\n
+      --help\t\tshow this screen
+      --h \t\tshow this screen
+      
       --i \t\tCase insensitive (not default)
       --m \t\tMultiline regex (not default/future use)
     
@@ -385,10 +388,15 @@ def show_usage():
       -otherGroupName2 ".*My Text Tag.*"
     """
     print(info)
+    exit(0)
 
 
 if __name__ == "__main__":
-    lg = LogGrep(args2dict(sys.argv))
+    try:
+        lg = LogGrep(args2dict(sys.argv))
+    except Exception as ex:
+        print(ex)
+        exit(1)
 
     if sys.stdin.isatty():
         lg.analyse_files()

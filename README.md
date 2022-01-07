@@ -7,6 +7,9 @@ Python script to extend grep command, adding counters, easier to filter by regex
 python3 lg.py *.log *.txt
 
 ```
+  --help	shows this help screen
+  --h       shows this help screen
+  
   --i 		Case insensitive (not default)
   --m 		Multiline regex (not default/future use)
 
@@ -21,6 +24,7 @@ python3 lg.py *.log *.txt
   -f  		/full/path/to/foldername/ (default is .)
   filename or file filters, as many as you want
 
+  --sr 		Show regex patterns stored in file
   -rp 		Regex Pattern ( default is ^(?P<all>.*)$ )
   -r  		Regex Pattern line_number from loggrep_patterns.txt file
 
