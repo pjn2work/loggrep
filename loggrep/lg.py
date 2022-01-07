@@ -37,10 +37,10 @@ class LogGrep:
             show_usage()
         if "--sr" in arg_dict:
             show_regex_file(full_path_on_this_folder(self._REGEX_PATTERN_FILE))
-        if "-rp" in arg_dict:    # regex pattern string
-            self._compile_options_regexPattern = arg_dict["-rp"]
         if "-r" in arg_dict:    # regex pattern string
             self._compile_options_regexPattern = get_line_from_file(full_path_on_this_folder(self._REGEX_PATTERN_FILE), int(arg_dict["-r"]))
+        if "-rp" in arg_dict:    # regex pattern string
+            self._compile_options_regexPattern = arg_dict["-rp"]
         if "--m" in arg_dict:   # multiline
             self._compile_options_regexOptions = self._compile_options_regexOptions | re.MULTILINE
         if "--i" in arg_dict:   # case insensitive
@@ -361,7 +361,8 @@ def quote_if_spaces(txt):
 
 def show_usage():
     info = """
-    usage: \t python3 lg.py *.log *.txt\n
+    usage: \t python lg.py *.log *.txt
+    
       --help\t\tshow this screen
       --h \t\tshow this screen
       
@@ -386,6 +387,11 @@ def show_usage():
           \t\tFilter by group names defined in regex pattern, they are converted into parameters, as ex:
       -level ERROR
       -otherGroupName2 ".*My Text Tag.*"
+      
+      examples:
+        python lg.py --sr
+        python lg.py -r 1 *.log *.txt /my/folder/file.log -level WARN -c "level class" --0
+        tail -100 file.log | python lg.py -rp "^(?P<level>[A-Z]{4,5}) (?P<class>.+?) - (?P<msg>.+)$" -o "failed - %class%" --nh --nc -level ERROR
     """
     print(info)
     exit(0)
